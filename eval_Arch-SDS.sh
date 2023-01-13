@@ -2,12 +2,12 @@
 
     # By PhK pour evaluer les donnees presentes dans l'archive SDS de l'OVPF
 	# Version du 04/04/2022
+	# Reprise pour statistiques annuelles par station
 	
+		
 	# Ameliorations a prevoir
-	#   - determination de l annee en cours ou passee automatiquement
 	#   - Recuperation des parametres propres a lenvironnement dans un fichier de conf
-	#   - Recuperation des listes dans fichier de conf
-
+	
 
     # On se place dans le bon repertoire
     cd /home/sysop/Stat_SDS
@@ -94,8 +94,8 @@
 	if [ -z $dateDebut ]
 	then 
 		anneeScrutee=$(date +%Y -d "$(date) -$decalageAnnee year")
-		dateDebut=$anneeScrutee"-01-01"
-		dateFin=$anneeScrutee"-12-31"
+		dateDebut=$(date +%Y -d "$(date) -1 year")"-01-01"
+		dateFin=$(date +%Y)"-12-31"
 	else
 		if [ -z $dateFin ]; then dateFin=$dateDebut; fi
 	fi    
@@ -107,10 +107,6 @@
         "All_OVPF") listeStations=$All_OVPF;;
     esac
  
-		anneeScrutee=$(date +%Y -d "$(date) -$decalageAnnee year")
-		dateDebut=$anneeScrutee"-01-01"
-		dateFin=$anneeScrutee"-12-31"
-
     # interessant en cas de débuggage
     if [ $verbose == 1 ]
     then
@@ -128,12 +124,12 @@
     # ---------------------------------------------------------------------
     for nomStation in `echo ${listeStations//,/ }`
     do   
-		cmd="./eval_Station-SDS.sh -d "$dateDebut" -f "$dateFin" -s "$nomStation
+		cmd="./Eeval_Station-SDS.sh -d "$dateDebut" -f "$dateFin" -s "$nomStation
 		if [ $verbose == 1 ]; then cmd=$cmd" -v"; fi
 		if [ $verbose == 2 ]; then cmd=$cmd" -t"; fi
 		if [ $verbose == 1 ] || [ $verbose == 2 ]; then echo $cmd; fi
 	
-		$cmd
+		#$cmd
     done
         
 

@@ -1,6 +1,16 @@
 #!/bin/bash
-# Essai PhK pour evaluer les donnees presentes dans l'archive SDS de l'OVPF
-#      Dernieres modifications le 01/12/2017 par P.K.
+#
+# Evaluation des donnees presentes dans l'archive SDS de l'OVPF
+#	Version du 05/04/2022
+#
+#	Objectif : Determiner quotidiennement la completude de la station sismique sur la periode 'date de debut' - 'date de fin'
+#				Destine en particiulier a traiter des periodes du type 'Y-1'-01-01 à Y-12-31 = 2 ans se terminant l'annee en cours	
+
+# Amelioration a prevoir
+#	- Davantage de parametres dans fichier de configuration
+#	- Un flag pour corcer l evaluation systematique
+#   - URGENT ajout de l annee dans les noms de fichiers resultats 
+
 
 # Initialisation/Definition par defaut de l environnement (repertoires)
 # ---------------------------------------------------------------------
@@ -11,20 +21,14 @@ repStat="stat-stations"
 #---- Repertoire pour listing miniseed du jour et de la veille
 repLs="ls-stations"
 
-
+# Initialisation des variables
 verbose=0       # Mode verbose
 test=0          # Mode test = debugage pour mise au point des scripts
-help=0
+help=0			# Flag pour le help
 dateFin=""
 freq=100
 
-# --------- A supprimer a la fin des tests ------------------
-# Pour simplifier la ligne de commande pendant les tests
-# Remarque : ces parametres sont surchargés en cas de presence dans la ligne de commande
-dateDebut="2022-01-18"
-dateFin="2022-01-28"
-stationCode="CAM"
-
+# Marqueur de temps pour evaluation des performances
 dateJalon=`date`
 
 # Traitement de la ligne de commande
@@ -51,7 +55,7 @@ if [ $help == 1 ]
 then
 	echo "# DOCUMENTATION DE statSDS.sh"
 	echo "#     Realisation de statistiques sur une liste de station d'une archive SDS"
-	echo "#     Derniere mise a jour : 01/04/2022 par Ph.K."
+	echo "#     Derniere mise a jour : 04/04/2022 par Ph.K."
 	echo "#" 
 	echo "# 1 - Objectif"
 	echo "# L'objectif du programme est de creer des fichiers contenant les statistiques (pourcentage) de chaque station avec channels et total pour chaque jour"
@@ -76,7 +80,10 @@ then
 	echo "#    -h : Cette documentation"
 	echo "#    -v : mode verbose"
 	echo "#"
-	echo "# 3 - Limitations connues"
+	echo "# 3 - Principes et limitations connues"
+	echo "#    - Surcharge des parametres : "
+	echo "#		 Les parametres passes dans la ligne de commande surchargent les parametres issus des fichiers de configuration"
+	echo "#	   - Les calculs ne sont refaits que si il y a eu une evolution des fichiers de donnees dans l archive SDS"
 	echo "#"    
 
 	exit 0; 
@@ -130,22 +137,38 @@ aujourdhui=`date +%Y%m%d`
 year=`date +%Y`
 hier=$(date +%Y%m%d -d "$aujourdhui -1 day")
 
-# Creation du fichier ls du jour pour la station 
-ls -lR $repMSV/$year/$netCode/$stationCode/ > $repLs/$stationCode-$aujourdhui
+# Effacement du fichier du jour s il existe (inutile si execute 1 x/jour)
+rm $repLs/$stationCode-$aujourdhui".txt"
+
+# Evaluation de la periode a lister
+premierJanvierFin=$(date +%Y -d "$dateFin +1 year")"-01-01"
+premierJanvier=`date +%Y -d $dateDebut`"-01-01"
+# Listage des annees concernees (Annee derniere + annee en cours en général)
+while [ $premierJanvier != $premierJanvierFin ]
+do
+	ls -lR $repMSV/$(date +%Y -d "$premierJanvier")/$netCode/$stationCode/ >> $repLs/$stationCode-$aujourdhui".txt"
+	echo $repMSV/$(date +%Y -d "$premierJanvier")/$netCode/$stationCode/
+	premierJanvier=$(date -I -d "$premierJanvier + 1 year")
+done
+
 # Renomer stat de la veille >> ".hier"
 mv $repStat/$stationCode.txt $repStat/$stationCode".hier"
 
-# Creation du fichier du jour
-# Creation ligne d entete
+# Creation du fichier stat du jour
+# Creation de la ligne d entete
 ligne="Date Total"
 for comp in `echo ${channelCode//,/ }` ; do ligne=$ligne" "$comp; done
 echo $ligne > $repStat/$stationCode.txt
 
 # Pour tous les jours a evaluer
 jour=$dateDebut
+
 jourFin=$(date -I -d "$dateFin + 1 day")
+echo $jourFin
+
 echo $channelCode > liste.txt
 
+#Evaluation de la completude des donnees sismo (pitonbleu:/xxx/MINISEED_VALIDE)
 while [ "$jour" != $jourFin ]
 do
 	# Comparaison stat fichier ls du jour avec stat fichier ls de la veille
